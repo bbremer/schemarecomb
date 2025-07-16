@@ -101,6 +101,7 @@ class Atom:
         charge: Charge.
 
     """
+
     serial_num: int
     name: str
     alt_loc: str
@@ -118,7 +119,7 @@ class Atom:
     charge: str
 
     @classmethod
-    def from_line(cls, line: str) -> 'Atom':
+    def from_line(cls, line: str) -> "Atom":
         """Construct Atom from PDB ATOM line.
 
         Parameters:
@@ -134,13 +135,14 @@ class Atom:
                 be constructed from the line.
 
         """
-        num_newlines = line.count('\n')
-        if num_newlines > 1 or (num_newlines == 1 and line[-1] != '\n'):
-            raise ValueError('More than one line passed into constructor.')
+        num_newlines = line.count("\n")
+        if num_newlines > 1 or (num_newlines == 1 and line[-1] != "\n"):
+            raise ValueError("More than one line passed into constructor.")
 
-        if line[:4] != 'ATOM' or line.count('ATOM') != 1:
-            raise ValueError('Invalid ATOM line passed into ATOM.from_line():'
-                             f' {line}')
+        if line[:4] != "ATOM" or line.count("ATOM") != 1:
+            raise ValueError(
+                "Invalid ATOM line passed into ATOM.from_line():" f" {line}"
+            )
 
         try:
             serial_num = int(line[6:11].strip())
@@ -159,12 +161,27 @@ class Atom:
             element = line[76:78].strip()
             charge = line[78:80].strip()
         except ValueError:
-            raise ValueError('Invalid ATOM line passed into ATOM.from_line():'
-                             f' {line}')
+            raise ValueError(
+                "Invalid ATOM line passed into ATOM.from_line():" f" {line}"
+            )
 
-        return cls(serial_num, name, alt_loc, res_name, chain, res_index,
-                   insertion_code, x, y, z, occup, temp, segment, element,
-                   charge)
+        return cls(
+            serial_num,
+            name,
+            alt_loc,
+            res_name,
+            chain,
+            res_index,
+            insertion_code,
+            x,
+            y,
+            z,
+            occup,
+            temp,
+            segment,
+            element,
+            charge,
+        )
 
     def to_line(self) -> str:
         """Convert to PDB file ATOM line.
@@ -173,7 +190,7 @@ class Atom:
             str of ATOM line in PDB file format.
 
         """
-        line = list('ATOM') + [' ' for _ in range(75)]
+        line = list("ATOM") + [" " for _ in range(75)]
         line[6:11] = str(self.serial_num).rjust(5)
         # Atom names are complicated, see the "misalignment" section of the
         # PDB format link, found in the Atom class docstring. We take a
@@ -182,17 +199,17 @@ class Atom:
         line[16] = self.alt_loc
         line[17:20] = self.res_name.rjust(3)
         line[21] = self.chain
-        line[22:26] = str(self.res_index+1).rjust(4)  # switch to 1 indexing
+        line[22:26] = str(self.res_index + 1).rjust(4)  # switch to 1 indexing
         line[26] = self.insertion_code
-        line[30:38] = f'{self.x:.3f}'.rjust(8)
-        line[38:46] = f'{self.y:.3f}'.rjust(8)
-        line[46:54] = f'{self.z:.3f}'.rjust(8)
-        line[54:60] = f'{self.occup:.2f}'.rjust(6)
-        line[60:66] = f'{self.temp:.2f}'.rjust(6)
+        line[30:38] = f"{self.x:.3f}".rjust(8)
+        line[38:46] = f"{self.y:.3f}".rjust(8)
+        line[46:54] = f"{self.z:.3f}".rjust(8)
+        line[54:60] = f"{self.occup:.2f}".rjust(6)
+        line[60:66] = f"{self.temp:.2f}".rjust(6)
         line[72:76] = self.segment.ljust(4)
         line[76:78] = self.element.rjust(2)
         line[78:80] = self.charge.rjust(2)
-        return ''.join(line)
+        return "".join(line)
 
 
 class AminoAcid:
@@ -224,20 +241,21 @@ class AminoAcid:
             accessed.
 
     """
+
     def __init__(self, atoms: list[Atom]):
         if not atoms:
-            raise ValueError('atoms must not be an empty list.')
+            raise ValueError("atoms must not be an empty list.")
 
         self.atoms = atoms
 
         res_name = atoms[0].res_name
         if any(a.res_name != res_name for a in atoms):
-            raise ValueError('Atoms do not all have the same res_name.')
+            raise ValueError("Atoms do not all have the same res_name.")
         self.name = res_name
 
         res_index = atoms[0].res_index
         if any(a.res_index != res_index for a in atoms):
-            raise ValueError('Atoms do not all have the same res_index.')
+            raise ValueError("Atoms do not all have the same res_index.")
         self.index = res_index
 
     @property
@@ -265,7 +283,7 @@ class AminoAcid:
             a.res_index = old_index
 
     @classmethod
-    def from_lines(cls, lines: list[str]) -> 'AminoAcid':
+    def from_lines(cls, lines: list[str]) -> "AminoAcid":
         """Construct AminoAcid from ATOM lines in a PDB file.
 
         Parameters:
@@ -319,7 +337,7 @@ class AminoAcid:
         return [a.to_line() for a in self.atoms]
 
     @classmethod
-    def from_json(cls, in_json: str) -> 'AminoAcid':
+    def from_json(cls, in_json: str) -> "AminoAcid":
         """JSON from_lines wrapper that includes orig_index.
 
         See the from_json method for an example.
@@ -428,15 +446,16 @@ class _PDBStructure:
         self,
         amino_acids: list[AminoAcid],
         unrenumbered_amino_acids: Optional[list[AminoAcid]] = None,
-        renumbering_seq: Optional[str] = None
+        renumbering_seq: Optional[str] = None,
     ):
         # Ensure that all amino_acid have unique indices.
         indices = set()
         for aa in amino_acids:
             index = aa.index
             if index in indices:
-                raise ValueError('AminoAcid objects in a PDBStructure must '
-                                 'have unique indices.')
+                raise ValueError(
+                    "AminoAcid objects in a PDBStructure must " "have unique indices."
+                )
             indices.add(index)
 
         self.amino_acids = amino_acids
@@ -444,24 +463,25 @@ class _PDBStructure:
 
         # If PDBStructure is already aligned, both unrenumberd_amino_acids and
         # renumbering_seq must both be not None.
-        if unrenumbered_amino_acids is not None \
-           and renumbering_seq is not None:
-            if any(aa.letter != renumbering_seq[aa.index] for aa
-                   in amino_acids):
-                raise ValueError(f'renumbering seq "{renumbering_seq}" is '
-                                 'invalid with input amino_acids.')
+        if unrenumbered_amino_acids is not None and renumbering_seq is not None:
+            if any(aa.letter != renumbering_seq[aa.index] for aa in amino_acids):
+                raise ValueError(
+                    f'renumbering seq "{renumbering_seq}" is '
+                    "invalid with input amino_acids."
+                )
 
             self.unrenumbered_amino_acids = unrenumbered_amino_acids
             self.renumbering_seq = renumbering_seq
-        elif unrenumbered_amino_acids is not None \
-                or renumbering_seq is not None:
-            raise ValueError('Unrenumbered_amino_acids and renumbering_seq '
-                             'must both be None if one is None.')
+        elif unrenumbered_amino_acids is not None or renumbering_seq is not None:
+            raise ValueError(
+                "Unrenumbered_amino_acids and renumbering_seq "
+                "must both be None if one is None."
+            )
 
     @property
     def seq(self) -> str:
         seq_dict = {aa.index: aa.letter for aa in self.amino_acids}
-        return ''.join([seq_dict.get(i, '-') for i in range(max(seq_dict)+1)])
+        return "".join([seq_dict.get(i, "-") for i in range(max(seq_dict) + 1)])
 
     @property
     def contacts(self) -> list[tuple[int, int]]:
@@ -491,7 +511,7 @@ class _PDBStructure:
 
         """
         # If already renumbered, derenumber to get all amino_acids back.
-        if hasattr(self, 'unrenumbered_amino_acids'):
+        if hasattr(self, "unrenumbered_amino_acids"):
             self.derenumber()
 
         # Will put each AminoAcid into one of these.
@@ -500,13 +520,15 @@ class _PDBStructure:
 
         # Order self.amino_acids.
         index_to_amino_acids = {aa.index: aa for aa in self.amino_acids}
-        ordered_amino_acids = [index_to_amino_acids[i] for i
-                               in sorted(index_to_amino_acids)]
+        ordered_amino_acids = [
+            index_to_amino_acids[i] for i in sorted(index_to_amino_acids)
+        ]
 
         # Align p0_aligned and the PDBStructure, using '.' for gaps.
-        pdb_seq = ''.join([aa.letter for aa in ordered_amino_acids])
-        aln = pairwise2.align.globalxx(p0_aligned, pdb_seq, gap_char='.',
-                                       one_alignment_only=True)[0]
+        pdb_seq = "".join([aa.letter for aa in ordered_amino_acids])
+        aln = pairwise2.align.globalxx(
+            p0_aligned, pdb_seq, gap_char=".", one_alignment_only=True
+        )[0]
         aligned_p1_seq = aln.seqA
         aligned_pdb_seq = aln.seqB
 
@@ -526,9 +548,9 @@ class _PDBStructure:
         # alignment settings.
         alignment_iter = zip(aligned_p1_seq, aligned_pdb_seq)
         for par_aa, pdb_aa in alignment_iter:
-            if pdb_aa != '.':
+            if pdb_aa != ".":
                 candidate_aa = next(pdb_iter)
-                if par_aa != '.':
+                if par_aa != ".":
                     # Aligned residue. Renumber to parent and include.
                     candidate_aa.renumber(parent_index)
                     renumbered_amino_acids.append(candidate_aa)
@@ -537,14 +559,14 @@ class _PDBStructure:
                     # In pdb but not p1, include in unrenumbered_amino_acids.
                     # print(f'warning: residue {i} in pdb but not parent.')
                     unrenumbered_amino_acids.append(candidate_aa)
-            elif par_aa != '.':
+            elif par_aa != ".":
                 # Not in pdb, but in p1, increment parent_index.
                 parent_index += 1
 
         self.amino_acids = renumbered_amino_acids
         self.unrenumbered_amino_acids = unrenumbered_amino_acids
         self.renumbering_seq = p0_aligned
-        if hasattr(self, '_contacts'):
+        if hasattr(self, "_contacts"):
             del self._contacts
 
     def derenumber(self) -> None:
@@ -558,22 +580,20 @@ class _PDBStructure:
             unrenumbered_amino_acids = self.unrenumbered_amino_acids
             del self.unrenumbered_amino_acids
         except AttributeError:
-            raise AttributeError('PDBStructure has not been renumbered.')
+            raise AttributeError("PDBStructure has not been renumbered.")
 
         for aa in self.amino_acids:
             aa.derenumber()
         amino_acids = self.amino_acids + unrenumbered_amino_acids
         self.amino_acids = amino_acids
         del self.renumbering_seq
-        if hasattr(self, '_contacts'):
+        if hasattr(self, "_contacts"):
             del self._contacts
 
     @classmethod
     def from_pdb_file(
-        cls,
-        f: Union[str, Path, TextIO],
-        chain: str = 'A'
-    ) -> '_PDBStructure':
+        cls, f: Union[str, Path, TextIO], chain: str = "A"
+    ) -> "_PDBStructure":
         """Construct from PDB file without renumbering.
 
         Reference the :mod:`~schemarecomb.pdb_structure` module to see the
@@ -596,7 +616,7 @@ class _PDBStructure:
         amino_acids = []
         curr_atoms: list[Atom] = []
         for line in f:
-            if line[:4] not in (b'ATOM', 'ATOM'):
+            if line[:4] not in (b"ATOM", "ATOM"):
                 continue
             if isinstance(line, bytes):
                 line = line.decode()
@@ -640,7 +660,7 @@ class _PDBStructure:
         return json.dumps([aa_jsons, unre_jsons, renum_seq])
 
     @classmethod
-    def from_json(cls, in_json: str) -> '_PDBStructure':
+    def from_json(cls, in_json: str) -> "_PDBStructure":
         """Construct from JSON string.
 
         Parameters:
@@ -694,6 +714,5 @@ class _PDBStructure:
         if unre_jsons is None:
             unrenumbered = None
         else:
-            unrenumbered = [AminoAcid.from_json(aa_json) for aa_json
-                            in unre_jsons]
+            unrenumbered = [AminoAcid.from_json(aa_json) for aa_json in unre_jsons]
         return cls(amino_acids, unrenumbered, renumbering_seq)

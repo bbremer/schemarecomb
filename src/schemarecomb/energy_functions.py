@@ -25,6 +25,7 @@ import schemarecomb
 
 class EnergyFunction(ABC):
     """Abstract class for making energy functions."""
+
     # TODO: Implement general energy function. (v0.2.0)
 
     def __init__(self, parents: schemarecomb.ParentSequences):
@@ -126,18 +127,18 @@ class SCHEMA(EnergyFunction):
             the pdb_structure attribute on initialization.
 
     """
+
     def __init__(self, parents: schemarecomb.ParentSequences):
         super().__init__(parents)
         try:
             alignment: list[tuple[str, ...]] = parents.alignment
         except AttributeError:
-            raise ValueError('Input ParentSequences must be aligned.')
+            raise ValueError("Input ParentSequences must be aligned.")
 
         try:
             pdb_structure = parents.pdb_structure
         except AttributeError:
-            raise ValueError('Input ParentSequences must have a '
-                             'pdb_structure.')
+            raise ValueError("Input ParentSequences must have a " "pdb_structure.")
 
         E_matrix = np.zeros((len(alignment), len(alignment)))
 
@@ -151,9 +152,8 @@ class SCHEMA(EnergyFunction):
 
             # For each possible recombinant calculate D_ij. E_matrix entry
             # is this sum over the number of possible recombinants.
-            broken = sum(1 for combo in product(AAs_i, AAs_j) if combo
-                         not in parental)
-            E_matrix[i, j] = broken / (len(AAs_i)**2)
+            broken = sum(1 for combo in product(AAs_i, AAs_j) if combo not in parental)
+            E_matrix[i, j] = broken / (len(AAs_i) ** 2)
 
         self.E_matrix = E_matrix
         # self.parents = parents

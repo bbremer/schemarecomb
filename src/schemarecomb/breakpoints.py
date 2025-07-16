@@ -22,6 +22,7 @@ class Overhang(NamedTuple):
         seq: Sequence of the sticky end.
 
     """
+
     ind: int
     seq: str
 
@@ -48,13 +49,13 @@ class BreakPoint(NamedTuple):
             assembled DNA sequence will be "...aTGTGg...".
 
     """
+
     position: int
     overhangs: list[Overhang]
 
 
 def _get_valid_patterns(
-    cdn_sets: list[set[str]],
-    reverse: bool = False
+    cdn_sets: list[set[str]], reverse: bool = False
 ) -> tuple[set[str], set[str], set[str]]:
     """DNA patterns in the codon alignment for Golden Gate site construction.
 
@@ -86,19 +87,19 @@ def _get_valid_patterns(
     """
 
     if not cdn_sets:
-        raise ValueError('cdn_sets must not be empty.')
+        raise ValueError("cdn_sets must not be empty.")
 
     # If your codons are not three bases long, you're either wrong or doing
     # xenobiology.
     if not all(all(len(cdn) == 3 for cdn in cdn_set) for cdn_set in cdn_sets):
-        raise ValueError('Codons should be three bases long.')
+        raise ValueError("Codons should be three bases long.")
 
     # If not reverse, cdn_shrink removes the right side letter of each codon.
     # If reverse, cdn_shrink removes the left side letter of each codon.
     fwd_lim, bwd_lim = int(reverse), 1 - int(reverse)
 
     def cdn_shrink(cdns: set[str]) -> set[str]:
-        return {cdn[fwd_lim:len(cdn)-bwd_lim] for cdn in cdns}
+        return {cdn[fwd_lim : len(cdn) - bwd_lim] for cdn in cdns}
 
     # 1 AA per codon, so len 3 patterns exist iff len(cdn_sets) == 1.
     if len(cdn_sets) == 1:
@@ -177,8 +178,9 @@ def calculate_breakpoints(
     try:
         alignment = parents.alignment
     except AttributeError:
-        raise ValueError('Input ParentSequences must be aligned to calculate '
-                         'valid breakpoints.')
+        raise ValueError(
+            "Input ParentSequences must be aligned to calculate " "valid breakpoints."
+        )
 
     # Check that codon_options contain all AAs in parent alignment.
     aa_alphabet = set(itertools.chain(*alignment))
@@ -197,7 +199,7 @@ def calculate_breakpoints(
     for bp_index, (cdns1, cdns2) in enumerate(zip(aln_cdns, aln_cdns[1:]), 1):
 
         # Can't do Golden Gate at a site with gaps.
-        if '---' in cdns1 or '---' in cdns2:
+        if "---" in cdns1 or "---" in cdns2:
             continue
 
         # Get the [len 1], [len 2], and [len 3] patterns for the two sites
@@ -230,10 +232,7 @@ def calculate_breakpoints(
     return breakpoints
 
 
-def block_indices(
-    breakpoints: list[BreakPoint],
-    aln_len: int
-) -> list[tuple[int, int]]:
+def block_indices(breakpoints: list[BreakPoint], aln_len: int) -> list[tuple[int, int]]:
     """Get the blocks' start and end indices given a list of breakpoints.
 
     The start index is inclusive and the end index is exclusive, i.e. slice
@@ -266,7 +265,7 @@ def block_indices(
 
     """
     if not breakpoints:
-        raise ValueError('breakpoints must not be empty.')
+        raise ValueError("breakpoints must not be empty.")
 
     # handle if breakpoints is missing 0 index or aln_len index.
     bp_inds = tuple(sorted(bp.position for bp in breakpoints))

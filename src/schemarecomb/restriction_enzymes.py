@@ -41,8 +41,8 @@ def read_ligation_data(fn: str) -> dict[tuple[str, str], Decimal]:
 
     """
     with open(fn) as f:
-        headers = next(f).strip().split(',')
-        lines = [line.strip().split(',') for line in f]
+        headers = next(f).strip().split(",")
+        lines = [line.strip().split(",") for line in f]
 
     overhangs = headers[1:]
     golden_gate_counts = {}
@@ -55,11 +55,11 @@ def read_ligation_data(fn: str) -> dict[tuple[str, str], Decimal]:
     return golden_gate_counts
 
 
-_complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
+_complement = {"A": "T", "C": "G", "G": "C", "T": "A"}
 
 
 def _reverse_complement(dna_str):
-    return ''.join(reversed([_complement[bp] for bp in dna_str]))
+    return "".join(reversed([_complement[bp] for bp in dna_str]))
 
 
 class _StackElement(NamedTuple):
@@ -69,6 +69,7 @@ class _StackElement(NamedTuple):
         prob: gg_prob of current element.
 
     """
+
     prob: Decimal
     ohs: list[Overhang]
     oh_denoms: list[Decimal]
@@ -110,6 +111,7 @@ class RestrictionEnzyme:
             correct length.
 
     """
+
     def __init__(
         self,
         name: str,
@@ -121,15 +123,15 @@ class RestrictionEnzyme:
         # Only overhang length of 3 or 4 are supported.
         oh_len = abs(top_cut_dist - bottom_cut_dist)
         if abs(oh_len) not in (3, 4):
-            raise ValueError('Overhang length must be 3 or 4.')
+            raise ValueError("Overhang length must be 3 or 4.")
 
         # Check that all overhangs are present as keys in ligation_counts.
-        all_ohs = {''.join(oh) for oh in itertools.product('ACGT',
-                                                           repeat=oh_len)}
+        all_ohs = {"".join(oh) for oh in itertools.product("ACGT", repeat=oh_len)}
         valid_keys = set(itertools.product(all_ohs, repeat=2))
         if valid_keys != ligation_counts.keys():
-            raise ValueError('ligation_counts must have all pairs of possible '
-                             'overhangs as keys.')
+            raise ValueError(
+                "ligation_counts must have all pairs of possible " "overhangs as keys."
+            )
 
         self.name = name
         self.recognition_seq = recognition_seq
@@ -145,18 +147,18 @@ class RestrictionEnzyme:
     @property
     def for_restriction_site(self):
         num_sep_bases = min(self.top_cut_dist, self.bottom_cut_dist)
-        sep_bases = ''.join(choices('acgt', k=num_sep_bases))
+        sep_bases = "".join(choices("acgt", k=num_sep_bases))
         return self.recognition_seq.lower() + sep_bases
 
     @property
     def rev_restriction_site(self):
         num_sep_bases = min(self.top_cut_dist, self.bottom_cut_dist)
-        sep_bases = ''.join(choices('acgt', k=num_sep_bases))
+        sep_bases = "".join(choices("acgt", k=num_sep_bases))
         rev_rec_site = _reverse_complement(self.recognition_seq)
         return sep_bases + rev_rec_site.lower()
 
     @classmethod
-    def from_name(cls, name: str) -> 'RestrictionEnzyme':
+    def from_name(cls, name: str) -> "RestrictionEnzyme":
         """Construct specific restriction enzyme from allowed names.
 
         The allowed values for name are 'BsaI-HFv2', 'BbsI-HF', 'BsmBI-v2',
@@ -165,14 +167,14 @@ class RestrictionEnzyme:
 
         """
         enzyme_params = {
-            'BsaI-HFv2': ('GGTCTC', 1, 5),
-            'BbsI-HF': ('GAAGAC', 2, 6),
-            'BsmBI-v2': ('CGTCTC', 1, 5),
-            'Esp3I': ('CGTCTC', 1, 5),
-            'SapI': ('GCTCTTC', 1, 4),
+            "BsaI-HFv2": ("GGTCTC", 1, 5),
+            "BbsI-HF": ("GAAGAC", 2, 6),
+            "BsmBI-v2": ("CGTCTC", 1, 5),
+            "Esp3I": ("CGTCTC", 1, 5),
+            "SapI": ("GCTCTTC", 1, 4),
         }
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        fn = os.path.join(dir_path, 'gg_data', name + '.csv')
+        fn = os.path.join(dir_path, "gg_data", name + ".csv")
         params = enzyme_params[name]
         lig_counts = read_ligation_data(fn)
         return cls(name, *params, lig_counts)
@@ -192,15 +194,16 @@ class RestrictionEnzyme:
         coh_coh = self.lc(coh_seq, coh_seq)
 
         # gg_prob of overhang and its complement.
-        prob = oh_coh**2 / ((oh_coh+oh_oh)*(oh_coh+coh_coh))
+        prob = oh_coh**2 / ((oh_coh + oh_oh) * (oh_coh + coh_coh))
 
         ohs = [oh, Overhang(-1, coh_seq)]
         oh_denoms = [oh_oh + oh_coh, coh_coh + oh_coh]
 
         return _StackElement(prob, ohs, oh_denoms)
 
-    def gg_prob(self, overhangs: list[Overhang],
-                has_complements: bool = False) -> Decimal:
+    def gg_prob(
+        self, overhangs: list[Overhang], has_complements: bool = False
+    ) -> Decimal:
         """Golden Gate Assembly efficiency."""
         oh_seqs = [oh.seq for oh in overhangs]
         if not has_complements:
@@ -215,8 +218,7 @@ class RestrictionEnzyme:
         prob = Decimal(1.0)
 
         for oh1_seq in oh_seqs:
-            tot = sum(self.ligation_counts[(oh1_seq, oh2_seq)] for oh2_seq
-                      in oh_seqs)
+            tot = sum(self.ligation_counts[(oh1_seq, oh2_seq)] for oh2_seq in oh_seqs)
             oh1_complement = _reverse_complement(oh1_seq)
             p_oh1 = self.ligation_counts[(oh1_seq, oh1_complement)] / tot
             prob *= p_oh1
@@ -224,9 +226,7 @@ class RestrictionEnzyme:
         return prob
 
     def max_gg_prob(
-        self,
-        breakpoints: list[BreakPoint],
-        thresh: Decimal = Decimal(1.0)
+        self, breakpoints: list[BreakPoint], thresh: Decimal = Decimal(1.0)
     ) -> tuple[Decimal, list[Overhang]]:
         r"""Calculate the optimal set of overhangs.
 
@@ -306,20 +306,19 @@ class RestrictionEnzyme:
         """
 
         if len(breakpoints) < 2:
-            raise ValueError('Length of breakpoints must be greater than 1.')
+            raise ValueError("Length of breakpoints must be greater than 1.")
 
         if not 0.0 < thresh <= 1.0:
-            raise ValueError('thresh must be more than 0.0 and no more than '
-                             '1.0.')
+            raise ValueError("thresh must be more than 0.0 and no more than " "1.0.")
 
-        '''
+        """
         overhang_sets: list[list[tuple[int, str]]] = []
         for breakp in sorted(breakpoints, key=lambda bp: bp.position):
             oh_set = list(set(breakp.overhangs))
             overhang_sets.append(oh_set)
-        '''
+        """
 
-        sorted_bps = sorted(breakpoints, key=attrgetter('position'))
+        sorted_bps = sorted(breakpoints, key=attrgetter("position"))
         overhang_sets = [bp.overhangs for bp in sorted_bps]
 
         max_gg_prob = Decimal(0.0)
@@ -344,9 +343,10 @@ class RestrictionEnzyme:
 
                 # Next denominators to track. Not including denoms for next_oh
                 # and next_coh.
-                next_denoms = [d + self.lc(oh.seq, noh_str)
-                               + self.lc(oh.seq, ncoh_str)
-                               for oh, d in zip(ohs, oh_denoms)]
+                next_denoms = [
+                    d + self.lc(oh.seq, noh_str) + self.lc(oh.seq, ncoh_str)
+                    for oh, d in zip(ohs, oh_denoms)
+                ]
 
                 denom_zip = zip(oh_denoms, next_denoms)
                 D_prod = Decimal(prod(d / next_d for d, next_d in denom_zip))
@@ -355,11 +355,9 @@ class RestrictionEnzyme:
                 next_overhangs = ohs + [next_oh, next_coh]
 
                 # Denominators for next_oh and next_coh.
-                n_denom = sum(self.lc(oh.seq, noh_str) for oh
-                              in next_overhangs)
+                n_denom = sum(self.lc(oh.seq, noh_str) for oh in next_overhangs)
                 n_denom = Decimal(n_denom)  # avoids mypy error
-                nc_denom = sum(self.lc(oh.seq, ncoh_str) for oh
-                               in next_overhangs)
+                nc_denom = sum(self.lc(oh.seq, ncoh_str) for oh in next_overhangs)
                 nc_denom = Decimal(nc_denom)  # avoids mypy error
                 next_denoms += [n_denom, nc_denom]
 
@@ -369,7 +367,7 @@ class RestrictionEnzyme:
                 # next_prob < prob, so don't add to stack if we've already
                 # found a better one.
                 if next_prob > max_gg_prob:
-                    if oh_index+1 == len(breakpoints):
+                    if oh_index + 1 == len(breakpoints):
                         # We're at the end of breakpoints, this is a valid set.
                         max_gg_prob = next_prob
                         max_overhangs = next_overhangs
@@ -379,8 +377,7 @@ class RestrictionEnzyme:
                             max_overhangs = max_overhangs[::2]
                             return max_gg_prob, max_overhangs
                     else:
-                        new_elem = _StackElement(next_prob, next_overhangs,
-                                                 next_denoms)
+                        new_elem = _StackElement(next_prob, next_overhangs, next_denoms)
                         stack_add.append(new_elem)
 
             if stack_add:
@@ -394,11 +391,10 @@ class RestrictionEnzyme:
             return max_gg_prob, max_overhangs
         except NameError:
             # max_overhangs does not exist.
-            raise ValueError('Maximum overhang set could not be found.')
+            raise ValueError("Maximum overhang set could not be found.")
 
     def to_json(self) -> str:
-        lig_counts = [list(k) + [str(v)] for k, v
-                      in self.ligation_counts.items()]
+        lig_counts = [list(k) + [str(v)] for k, v in self.ligation_counts.items()]
         out_list = [
             self.name,
             self.recognition_seq,

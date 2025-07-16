@@ -33,8 +33,7 @@ from Bio.SeqRecord import SeqRecord
 import schemarecomb
 
 
-def calc_identity(sr1: SeqRecord, sr2: SeqRecord) \
-        -> float:
+def calc_identity(sr1: SeqRecord, sr2: SeqRecord) -> float:
     """Calculate the BLAST identity between two sequences.
 
     Note:
@@ -59,9 +58,7 @@ def calc_identity(sr1: SeqRecord, sr2: SeqRecord) \
 
 
 def query_blast(
-    query_seq: str,
-    database: str = 'refseq_protein',
-    maximum_hits: int = 10000
+    query_seq: str, database: str = "refseq_protein", maximum_hits: int = 10000
 ) -> SeqIO.FastaIO.FastaIterator:
     """Gets sequences from query_seq BLAST hits.
 
@@ -86,20 +83,19 @@ def query_blast(
     NCBI_BLAST_URL = "https://blast.ncbi.nlm.nih.gov/Blast.cgi"
 
     # Only refseq_protein and pdbaa databases supported.
-    if database not in ('refseq_protein', 'pdbaa'):
+    if database not in ("refseq_protein", "pdbaa"):
         raise ValueError('database must be "refseq_protein" or "pdbaa"')
 
     # Initiate BLAST search.
     params = [
-        ('PROGRAM', 'blastp'),
-        ('DATABASE', database),
-        ('QUERY', query_seq),
-        ('HITLIST_SIZE', maximum_hits),
+        ("PROGRAM", "blastp"),
+        ("DATABASE", database),
+        ("QUERY", query_seq),
+        ("HITLIST_SIZE", maximum_hits),
         ("CMD", "Put"),
     ]
     message = urlencode(params).encode()
-    request = Request(NCBI_BLAST_URL, message, {"User-Agent":
-                                                "BiopythonClient"})
+    request = Request(NCBI_BLAST_URL, message, {"User-Agent": "BiopythonClient"})
     # TODO: Change from BiopythonClient.
     handle = urlopen(request)
 
@@ -108,13 +104,12 @@ def query_blast(
 
     # Setup BLAST job checking request.
     params = [
-        ('RID', rid),
-        ('FORMAT_TYPE', 'XML'),
-        ('CMD', 'Get'),
+        ("RID", rid),
+        ("FORMAT_TYPE", "XML"),
+        ("CMD", "Get"),
     ]
     message = urlencode(params).encode()
-    request = Request(NCBI_BLAST_URL, message, {"User-Agent":
-                                                "BiopythonClient"})
+    request = Request(NCBI_BLAST_URL, message, {"User-Agent": "BiopythonClient"})
 
     # Query BLAST once a minute until job is done.
     previous = 0.0
@@ -146,7 +141,7 @@ def query_blast(
             break
         i = results.index("Status=")
         j = results.index("\n", i)
-        status = results[i + len("Status="): j].strip()
+        status = results[i + len("Status=") : j].strip()
         if status.upper() == "READY":
             break
 
@@ -154,45 +149,45 @@ def query_blast(
 
     # Request to get hit accessions from search results.
     params = [
-        ('RID', rid),
-        ('RESULTS_FILE', 'on'),
-        ('FORMAT_TYPE', 'CSV'),
-        ('DESCRIPTIONS', maximum_hits),
-        ('FORMAT_OBJECT', 'Alignment'),
-        ('DOWNLOAD_TEMPL', 'Results'),
-        ('QUERY_INDEX', '0'),
-        ('CMD', 'Get'),
+        ("RID", rid),
+        ("RESULTS_FILE", "on"),
+        ("FORMAT_TYPE", "CSV"),
+        ("DESCRIPTIONS", maximum_hits),
+        ("FORMAT_OBJECT", "Alignment"),
+        ("DOWNLOAD_TEMPL", "Results"),
+        ("QUERY_INDEX", "0"),
+        ("CMD", "Get"),
     ]
     message = urlencode(params).encode()
-    request = Request(NCBI_BLAST_URL, message, {"User-Agent":
-                                                "BiopythonClient"})
+    request = Request(NCBI_BLAST_URL, message, {"User-Agent": "BiopythonClient"})
     handle = urlopen(request)
 
     # Unpack accessions into candidate_accessions list.
     handle.readline()  # headers
     candidate_accessions = []
     for line in handle:
-        fields = line.decode().strip().split(',')
+        fields = line.decode().strip().split(",")
         if len(fields) <= 1:
             continue
         # Split by ',' unfortunately splits last field in two.
-        accession = fields[-1].replace('"', '').replace(')', '')
+        accession = fields[-1].replace('"', "").replace(")", "")
         candidate_accessions.append(accession)
 
     # TODO: query for new sequences on demand (generator)
 
     # Get accession sequences from NCBI.
-    acc_str = ','.join(candidate_accessions)
-    Entrez.email = 'bbremer@wisc.edu'  # this probably needs to change
-    fasta_str = Entrez.efetch(db='protein', id=acc_str, rettype='fasta')
+    acc_str = ",".join(candidate_accessions)
+    Entrez.email = "bbremer@wisc.edu"  # this probably needs to change
+    fasta_str = Entrez.efetch(db="protein", id=acc_str, rettype="fasta")
 
     # print('returning')
 
-    return SeqIO.parse(fasta_str, 'fasta')
+    return SeqIO.parse(fasta_str, "fasta")
 
 
 class _NoNewNodeError(RuntimeError):
     """Raised when no node is added to the tree."""
+
     pass
 
 
@@ -210,23 +205,29 @@ class _TreeNode:
         children: Child nodes of this node.
         parent: Parent node of this node.
     """
+
     def __init__(
         self,
         cands: SeqRecord = [],
         max_cc_diff: float = 0.0,
         max_pc_diff: float = 0.0,
-        parent: '_TreeNode' = None
+        parent: "_TreeNode" = None,
     ) -> None:
         """Initialize node instance with precomputed identies."""
         self.cands = cands
         self.max_cc_diff = max_cc_diff
         self.max_pc_diff = max_pc_diff
-        self.children: list['_TreeNode'] = []
+        self.children: list["_TreeNode"] = []
         if parent is not None:
             self.parent = parent
 
-    def new_cand(self, cand: SeqRecord, new_pc_diff: float,
-                 diff_thresh: float, target_identity: float) -> '_TreeNode':
+    def new_cand(
+        self,
+        cand: SeqRecord,
+        new_pc_diff: float,
+        diff_thresh: float,
+        target_identity: float,
+    ) -> "_TreeNode":
         """Create new child node with candidates self.cands + [cand].
 
         Args:
@@ -245,8 +246,9 @@ class _TreeNode:
         if self.cands:
             # Calculate the identity diff between the new candidate and each
             # candidate in self.cands.
-            new_cc_diff = max(abs(target_identity - calc_identity(cand, x))
-                              for x in self.cands)
+            new_cc_diff = max(
+                abs(target_identity - calc_identity(cand, x)) for x in self.cands
+            )
             # Choose maximum between old cc_diff and new_cc_diff.
             new_cc_diff = max(self.max_cc_diff, new_cc_diff)
         else:
@@ -258,12 +260,16 @@ class _TreeNode:
         new_cands = self.cands + [cand]
         return _TreeNode(new_cands, new_cc_diff, new_pc_diff, self)
 
-    def add_cand(self, cand: SeqRecord, new_pc_diff: float,
-                 diff_thresh: float, target_identity: float) -> None:
+    def add_cand(
+        self,
+        cand: SeqRecord,
+        new_pc_diff: float,
+        diff_thresh: float,
+        target_identity: float,
+    ) -> None:
         """new_cand new_cand for adding non-leaf nodes."""
         try:
-            new_node = self.new_cand(cand, new_pc_diff, diff_thresh,
-                                     target_identity)
+            new_node = self.new_cand(cand, new_pc_diff, diff_thresh, target_identity)
         except _NoNewNodeError:
             return
         if new_node is not None:
@@ -275,7 +281,7 @@ class _TreeNode:
 
     def __repr__(self) -> str:
         """Return CSV string of the node's candidate ids."""
-        return ','.join([c.id for c in self.cands])
+        return ",".join([c.id for c in self.cands])
 
 
 class _Tree:
@@ -292,6 +298,7 @@ class _Tree:
         best_diff: The maximum abs(% identity - target_identity) out of each
             pair in best_leaf.cands + parents.
     """
+
     def __init__(self, num_seqs: int, target_identity: float):
         """Tree for finding <num_seqs> candidates with <target_identity>."""
         self.base = _TreeNode()
@@ -325,9 +332,9 @@ class _Tree:
             # evaluate it directly and don't need to add it to tree.
             if len(curr_node.cands) == self.num_seqs - 1:
                 try:
-                    leaf = curr_node.new_cand(cand, new_pc_diff,
-                                              self.best_diff,
-                                              self.target_identity)
+                    leaf = curr_node.new_cand(
+                        cand, new_pc_diff, self.best_diff, self.target_identity
+                    )
                 except _NoNewNodeError:
                     continue
                 # leaf max diff is smaller than self.best_diff, new best!
@@ -337,14 +344,13 @@ class _Tree:
                 # Every future leaf will have equal or greater max_pc_diff,
                 # so this leaf must be the best one and we can stop.
                 if leaf.max_pc_diff >= leaf.max_cc_diff:
-                    return 'best found'
+                    return "best found"
 
                 continue
 
             # Non-leaf node case.
             stack += curr_node.children  # comes first b/c don't want dup cands
-            curr_node.add_cand(cand, new_pc_diff, self.best_diff,
-                               self.target_identity)
+            curr_node.add_cand(cand, new_pc_diff, self.best_diff, self.target_identity)
         return None
 
     def shape(self) -> list[int]:
@@ -362,7 +368,7 @@ def choose_candidates(
     candidate_sequences: list[SeqRecord],
     existing_parents: list[SeqRecord],
     num_additional: int,
-    desired_identity: float
+    desired_identity: float,
 ) -> list[SeqRecord]:
     """Choose the ideal set of candidate sequences.
 
@@ -388,14 +394,13 @@ def choose_candidates(
 
     # Parameter checking.
     if num_additional < 1:
-        raise ValueError('num_additional must be positive.')
+        raise ValueError("num_additional must be positive.")
     if not 0.0 < desired_identity < 1.0:
-        raise ValueError('desired_identity must be between 0.0 and 1.0, '
-                         'exclusive.')
+        raise ValueError("desired_identity must be between 0.0 and 1.0, " "exclusive.")
     if len(candidate_sequences) < num_additional:
-        raise ValueError('Insufficient number of candidates provided.')
+        raise ValueError("Insufficient number of candidates provided.")
     if not existing_parents:
-        raise ValueError('existing_parents must not be empty.')
+        raise ValueError("existing_parents must not be empty.")
     # TODO: Handle empty existing_parents as valid? I.e. choose starting from
     # nothing. (Version 0.2.0)
 
@@ -408,8 +413,9 @@ def choose_candidates(
     # print('Calculating pc_diff and sorted')
     for i, cand in enumerate(candidate_sequences):
         # print(i, '\r', end='')
-        max_diff = max(abs(desired_identity - calc_identity(cand, x))
-                       for x in existing_parents)
+        max_diff = max(
+            abs(desired_identity - calc_identity(cand, x)) for x in existing_parents
+        )
         cand_diffs.append((cand, max_diff))
     # print()
 
@@ -427,7 +433,7 @@ def choose_candidates(
         if pc_diff > tree.best_diff:
             break
         ret = tree.add_cand(cand, pc_diff)
-        if ret == 'best found':
+        if ret == "best found":
             break
     # print()
     return tree.best_leaf.cands
@@ -444,39 +450,40 @@ def web_muscle(records: list[SeqRecord]) -> str:
             with "SeqIO.parse(StringIO(aln_str), 'fasta')".
 
     """
-    email = 'bbremer@wisc.edu'
-    base_url = 'https://www.ebi.ac.uk/Tools/services/rest/muscle/'
+    email = "bbremer@wisc.edu"
+    base_url = "https://www.ebi.ac.uk/Tools/services/rest/muscle/"
 
-    seqs_f = StringIO('')
-    SeqIO.write(records, seqs_f, 'fasta')
+    seqs_f = StringIO("")
+    SeqIO.write(records, seqs_f, "fasta")
     seqs_f.seek(0)
     seqs_str = seqs_f.read()
 
     # Submit job.
     params = {
-        'email': email,
-        'format': 'fasta',
-        'sequence': seqs_str,
+        "email": email,
+        "format": "fasta",
+        "sequence": seqs_str,
     }
     message = urlencode(params).encode()
-    url = base_url + 'run'
+    url = base_url + "run"
     request = Request(url, message)
     jobid = urlopen(request).read().decode()
 
     # Wait for completion.
-    url = base_url + 'status/' + jobid
+    url = base_url + "status/" + jobid
     response = urlopen(url).read().decode()
-    while response == 'RUNNING':
+    while response == "RUNNING":
         time.sleep(1)
         response = urlopen(url).read().decode()
-    if response != 'FINISHED':
-        url = base_url + 'result/' + jobid + '/error'
+    if response != "FINISHED":
+        url = base_url + "result/" + jobid + "/error"
         error = urlopen(url).read().decode()
-        raise RuntimeError(f"MUSCLE status response: {repr(response)}, "
-                           f"error message: {error}")
+        raise RuntimeError(
+            f"MUSCLE status response: {repr(response)}, " f"error message: {error}"
+        )
 
     # Get resulting alignment.
-    url = base_url + 'result/' + jobid + '/aln-fasta'
+    url = base_url + "result/" + jobid + "/aln-fasta"
     aln_str = urlopen(url).read().decode()
     return aln_str
 
@@ -488,16 +495,16 @@ def local_muscle(records: list[SeqRecord]) -> str:
     """
     # print('running alignment')
 
-    IN_FN = 'temp_muscle_input.fasta'
-    OUT_FN = 'temp_muscle_output.fasta'
+    IN_FN = "temp_muscle_input.fasta"
+    OUT_FN = "temp_muscle_output.fasta"
 
     # make file for MUSCLE input
     # TODO: Use tempfile package.
-    SeqIO.write(records, IN_FN, 'fasta')
+    SeqIO.write(records, IN_FN, "fasta")
 
     # run MUSCLE
     try:
-        run(f'muscle -in {IN_FN} -out {OUT_FN}', shell=True, check=True)
+        run(f"muscle -in {IN_FN} -out {OUT_FN}", shell=True, check=True)
     except CalledProcessError:
         # print('Something is wrong with MUSCLE call. Is MUSCLE installed?')
         raise
@@ -637,20 +644,19 @@ class _ParentSequences:
     def __init__(
         self,
         records: list[SeqRecord],
-        pdb_structure: Optional['schemarecomb.PDBStructure'] = None,
+        pdb_structure: Optional["schemarecomb.PDBStructure"] = None,
         auto_align: bool = False,
-        prealigned: bool = False
+        prealigned: bool = False,
     ) -> None:
         # Input checking.
         if len(records) < 1:
-            raise ValueError('records must not be empty.')
+            raise ValueError("records must not be empty.")
         if auto_align and prealigned:
-            raise ValueError('auto_align and prealigned must not both be '
-                             'True.')
+            raise ValueError("auto_align and prealigned must not both be " "True.")
 
         self.records = records
 
-        self.pdb_structure: 'schemarecomb.PDBStructure'
+        self.pdb_structure: "schemarecomb.PDBStructure"
         if pdb_structure is not None:
             self.pdb_structure = pdb_structure
 
@@ -660,19 +666,22 @@ class _ParentSequences:
             self.new_alignment([str(rec.seq) for rec in records])
 
     def __setattr__(self, name, value) -> None:
-        if name == 'alignment':
-            raise AttributeError('The alignment attribute cannot be set '
-                                 'directly. Use the align or new_alignment '
-                                 'methods.')
+        if name == "alignment":
+            raise AttributeError(
+                "The alignment attribute cannot be set "
+                "directly. Use the align or new_alignment "
+                "methods."
+            )
 
         super().__setattr__(name, value)
 
-        if name == 'records' and hasattr(self, '_alignment'):
+        if name == "records" and hasattr(self, "_alignment"):
             # If sequences is changed, alignment is out of date, delete.
             del self._alignment
 
-        if (name == '_alignment' and hasattr(self, 'pdb_structure')) or \
-           (name == 'pdb_structure' and hasattr(self, '_alignment')):
+        if (name == "_alignment" and hasattr(self, "pdb_structure")) or (
+            name == "pdb_structure" and hasattr(self, "_alignment")
+        ):
             # Renumber existing pdb_structure if alignment changes or if
             # renumber new pdb_structure if self is aligned.
             self.pdb_structure.renumber(self.p0_aligned)
@@ -682,11 +691,11 @@ class _ParentSequences:
         try:
             return self._alignment
         except AttributeError:
-            raise AttributeError('ParentSequences instance is not aligned.')
+            raise AttributeError("ParentSequences instance is not aligned.")
 
     @property
     def p0_aligned(self):
-        return ''.join([aminos[0] for aminos in self.alignment])
+        return "".join([aminos[0] for aminos in self.alignment])
 
     def new_alignment(self, aligned_sequences: list[str]) -> None:
         """Add aligned sequences from records to instance.
@@ -703,16 +712,16 @@ class _ParentSequences:
 
         """
         if len(aligned_sequences) != len(self.records):
-            raise ValueError('The number of aligned sequences provided must be'
-                             ' the same as the number of records.')
+            raise ValueError(
+                "The number of aligned sequences provided must be"
+                " the same as the number of records."
+            )
         aln_len = len(aligned_sequences[0])
         if any(len(aln_seq) != aln_len for aln_seq in aligned_sequences[1:]):
-            raise ValueError('All sequences must be the same length if '
-                             'prealigned.')
+            raise ValueError("All sequences must be the same length if " "prealigned.")
         for sr, aln_seq in zip(self.records, aligned_sequences):
-            if str(sr.seq).replace('-', '') != aln_seq.replace('-', ''):
-                raise ValueError('aligned_sequences is does not match '
-                                 'self.records.')
+            if str(sr.seq).replace("-", "") != aln_seq.replace("-", ""):
+                raise ValueError("aligned_sequences is does not match " "self.records.")
         self._alignment = list(zip(*aligned_sequences))
 
     def align(self, run_locally: bool = False) -> None:
@@ -728,8 +737,10 @@ class _ParentSequences:
             try:
                 aln_str = local_muscle(self.records)
             except CalledProcessError:
-                print('muscle command not available, falling back to MUSCLE '
-                      'web service.')
+                print(
+                    "muscle command not available, falling back to MUSCLE "
+                    "web service."
+                )
 
         # Try to use the MUSCLE web API five times.
         for _ in range(5):
@@ -740,10 +751,10 @@ class _ParentSequences:
                 print(e)
 
         if aln_str is None:
-            raise RuntimeError('MUSCLE web API did not work.')
+            raise RuntimeError("MUSCLE web API did not work.")
 
         aln_f = StringIO(aln_str)
-        out_SRs = {SR.name: SR for SR in SeqIO.parse(aln_f, 'fasta')}
+        out_SRs = {SR.name: SR for SR in SeqIO.parse(aln_f, "fasta")}
         reordered_srs = [out_SRs[sr.name] for sr in self.records]
 
         # This renumbers the self.pdb_structure if present.
@@ -751,9 +762,7 @@ class _ParentSequences:
         self._alignment = list(zip(*aligned_sequences))
 
     def obtain_seqs(
-        self,
-        num_final_sequences: int,
-        desired_identity: Optional[float] = None
+        self, num_final_sequences: int, desired_identity: Optional[float] = None
     ) -> None:
         """Adds new sequences with BLAST.
 
@@ -774,8 +783,10 @@ class _ParentSequences:
         """
         if len(self.records) >= num_final_sequences:
             len_seqs = len(self.records)
-            raise ValueError(f'Requested {num_final_sequences} total sequences'
-                             f' but there are already {len_seqs} sequences.')
+            raise ValueError(
+                f"Requested {num_final_sequences} total sequences"
+                f" but there are already {len_seqs} sequences."
+            )
 
         # This results in two calls, but we want to validate before BLAST.
         desired_identity = self._check_identity(desired_identity)
@@ -785,14 +796,13 @@ class _ParentSequences:
         candidate_seqs = list(query_blast(query_seq))
         # query_blast gives iter but list should be small enough
 
-        self.add_from_candidates(candidate_seqs, num_final_sequences,
-                                 desired_identity)
+        self.add_from_candidates(candidate_seqs, num_final_sequences, desired_identity)
 
     def add_from_candidates(
         self,
         candidate_sequences: list[SeqRecord],
         num_final_sequences: int,
-        desired_identity: float = None
+        desired_identity: float = None,
     ) -> None:
         """Add new parent sequences from list of candidates.
 
@@ -822,15 +832,14 @@ class _ParentSequences:
         if num_additional <= 0:
             return
         if len(candidate_sequences) < num_additional:
-            raise ValueError('candidate_sequences is not large enough to '
-                             f'add {num_additional} sequences.')
+            raise ValueError(
+                "candidate_sequences is not large enough to "
+                f"add {num_additional} sequences."
+            )
         desired_identity = self._check_identity(desired_identity)
 
         best_cands = choose_candidates(
-            candidate_sequences,
-            self.records,
-            num_additional,
-            desired_identity
+            candidate_sequences, self.records, num_additional, desired_identity
         )
         self.records += best_cands
 
@@ -851,33 +860,29 @@ class _ParentSequences:
         """
         query_str = str(self.records[0].seq)
 
-        pdb_srs = list(query_blast(query_str, 'pdbaa', 100))
+        pdb_srs = list(query_blast(query_str, "pdbaa", 100))
 
         # Find the PDB struct with largest minimum identity to the parents.
         pdb_min_map = {}
         for pdb_sr in pdb_srs:
-            min_iden = min(calc_identity(parent, pdb_sr) for parent
-                           in self.records)
+            min_iden = min(calc_identity(parent, pdb_sr) for parent in self.records)
             pdb_min_map[pdb_sr.id] = min_iden
 
         try:
             best_id = max(pdb_min_map, key=lambda pdbid: pdb_min_map[pdbid])
         except ValueError:
-            raise RuntimeError('No best PDB could be found.')
+            raise RuntimeError("No best PDB could be found.")
 
         # Get the pdb_structure from rcsb.
-        _, acc, chain = best_id.split('|')
-        url = 'https://files.rcsb.org/view/' + acc + '.pdb'
+        _, acc, chain = best_id.split("|")
+        url = "https://files.rcsb.org/view/" + acc + ".pdb"
         with urlopen(url) as f:
-            pdb_structure = schemarecomb.PDBStructure.from_pdb_file(
-                f,
-                chain=chain
-            )
+            pdb_structure = schemarecomb.PDBStructure.from_pdb_file(f, chain=chain)
 
         self.pdb_structure = pdb_structure
 
     @classmethod
-    def from_fasta(cls, fasta_fn: str, **kwargs) -> '_ParentSequences':
+    def from_fasta(cls, fasta_fn: str, **kwargs) -> "_ParentSequences":
         """Contruct instance from FASTA file.
 
         Parameters:
@@ -889,7 +894,7 @@ class _ParentSequences:
             ParentsSequences instance constructed from input FASTA file.
 
         """
-        seqs = list(SeqIO.parse(fasta_fn, 'fasta'))
+        seqs = list(SeqIO.parse(fasta_fn, "fasta"))
         return cls(seqs, **kwargs)
 
     def to_json(self) -> str:
@@ -900,8 +905,7 @@ class _ParentSequences:
 
         """
 
-        records = [[str(sr.seq), sr.id, sr.name, sr.description] for sr
-                   in self.records]
+        records = [[str(sr.seq), sr.id, sr.name, sr.description] for sr in self.records]
 
         # TODO: probably add a version?
         out_list: list = [records]
@@ -919,7 +923,7 @@ class _ParentSequences:
         return json.dumps(out_list)
 
     @classmethod
-    def from_json(cls, in_json: str) -> '_ParentSequences':
+    def from_json(cls, in_json: str) -> "_ParentSequences":
         """Construct instance from JSON.
 
         Parameters:
@@ -959,10 +963,13 @@ class _ParentSequences:
                 desired_identity = 0.7
             else:
                 # calculate average pairwise identity of parents
-                identities = [calc_identity(sr1, sr2) for sr1, sr2
-                              in combinations(self.records, 2)]
+                identities = [
+                    calc_identity(sr1, sr2)
+                    for sr1, sr2 in combinations(self.records, 2)
+                ]
                 desired_identity = sum(identities) / len(identities)
         if not 0.0 < desired_identity < 1.0:
-            raise ValueError('desired_identity must be between 0.0 and 1.0, '
-                             'exclusive.')
+            raise ValueError(
+                "desired_identity must be between 0.0 and 1.0, " "exclusive."
+            )
         return desired_identity

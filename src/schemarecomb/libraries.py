@@ -33,13 +33,30 @@ from schemarecomb.restriction_enzymes import RestrictionEnzyme
 
 # List of 31 common codons {+stop and gap) in E. coli.
 _AA_C31: dict[str, set[str]]
-_AA_C31 = {'A': {'GCT', 'GCA'}, 'R': {'CGT', 'CGA'}, 'N': {'AAT'},
-           'D': {'GAT'}, 'C': {'TGT'}, 'Q': {'CAA', 'CAG'}, 'E': {'GAA'},
-           'G': {'GGT'}, 'H': {'CAT', 'CAC'}, 'I': {'ATT', 'ATC'},
-           'L': {'TTA', 'TTG', 'CTA'}, 'K': {'AAA'}, 'M': {'ATG'},
-           'F': {'TTT'}, 'P': {'CCT', 'CCA'}, 'S': {'AGT', 'TCA'},
-           'T': {'ACA', 'ACT'}, 'W': {'TGG'}, 'Y': {'TAT'},
-           'V': {'GTT', 'GTA'}, '*': {'TGA'}, '-': {'---'}}
+_AA_C31 = {
+    "A": {"GCT", "GCA"},
+    "R": {"CGT", "CGA"},
+    "N": {"AAT"},
+    "D": {"GAT"},
+    "C": {"TGT"},
+    "Q": {"CAA", "CAG"},
+    "E": {"GAA"},
+    "G": {"GGT"},
+    "H": {"CAT", "CAC"},
+    "I": {"ATT", "ATC"},
+    "L": {"TTA", "TTG", "CTA"},
+    "K": {"AAA"},
+    "M": {"ATG"},
+    "F": {"TTT"},
+    "P": {"CCT", "CCA"},
+    "S": {"AGT", "TCA"},
+    "T": {"ACA", "ACT"},
+    "W": {"TGG"},
+    "Y": {"TAT"},
+    "V": {"GTT", "GTA"},
+    "*": {"TGA"},
+    "-": {"---"},
+}
 
 
 class MutationRateCache(MutableMapping):
@@ -76,8 +93,9 @@ class MutationRateCache(MutableMapping):
         self._group_to_m: dict[tuple[int, ...], float] = {}
 
     @classmethod
-    def from_parents(cls, parents: schemarecomb.ParentSequences,
-                     valid_bps: list[BreakPoint]) -> 'MutationRateCache':
+    def from_parents(
+        cls, parents: schemarecomb.ParentSequences, valid_bps: list[BreakPoint]
+    ) -> "MutationRateCache":
         """Construct from ParentSequences and a list of valid breakpoints.
 
         Parameters:
@@ -95,8 +113,7 @@ class MutationRateCache(MutableMapping):
             # If previous bp is not adjacent to current or has more than one
             # amino acid, current belongs to a new group.
             # TODO: Test new group logic.
-            if bp != curr_bps[-1] + 1 or \
-               len(set(parents.alignment[bp-1])) != 1:
+            if bp != curr_bps[-1] + 1 or len(set(parents.alignment[bp - 1])) != 1:
                 breakpoint_groups.append(curr_bps)
                 curr_bps = [bp]
             else:
@@ -131,12 +148,12 @@ class MutationRateCache(MutableMapping):
 
         # Check that all elements of group_bos are unique.
         if len(set(group_bps)) != len(group_bps):
-            raise KeyError('At least two input breakpoints are redundant.')
+            raise KeyError("At least two input breakpoints are redundant.")
 
         try:
             return self._group_to_m[group_bps]
         except KeyError:
-            raise KeyError('Non-redundant breakpoint set not in cache.')
+            raise KeyError("Non-redundant breakpoint set not in cache.")
 
     def __setitem__(self, key: tuple[int, ...], value: float) -> None:
         # convert bps in key to group_bps
@@ -145,12 +162,12 @@ class MutationRateCache(MutableMapping):
 
         # Check that all elements of group_bos are unique.
         if len(set(group_bps)) != len(group_bps):
-            raise KeyError('At least two input breakpoints are redundant.')
+            raise KeyError("At least two input breakpoints are redundant.")
 
         self._group_to_m[group_bps] = value
 
     def __delitem__(self, key):
-        raise TypeError('Deletion is not supported for MutationRateCache.')
+        raise TypeError("Deletion is not supported for MutationRateCache.")
 
     def __iter__(self):
         return iter(self._group_to_m)
@@ -168,7 +185,7 @@ def _sequence_mutations(seq1, seq2):
 def average_mutations(
     breakpoints: list[BreakPoint],
     parents: schemarecomb.ParentSequences,
-    mr_cache: Optional[MutationRateCache] = None
+    mr_cache: Optional[MutationRateCache] = None,
 ) -> Decimal:
     """Calculates the average number of mutations in a chimeric library.
 
@@ -184,8 +201,10 @@ def average_mutations(
     """
 
     bp_indices = tuple(sorted(bp.position for bp in breakpoints))
-    if mr_cache is not None and \
-       (mut_rate := mr_cache.get(bp_indices, None)) is not None:
+    if (
+        mr_cache is not None
+        and (mut_rate := mr_cache.get(bp_indices, None)) is not None
+    ):
         return mut_rate
 
     seqs = list(zip(*parents.alignment))
@@ -211,8 +230,10 @@ def average_mutations(
     # Perform depth first traversal over blocks to calculate M_sum. This
     # is faster than itertools.product because it avoids redundant
     # summation.
-    stack = deque((1, [blmuts[0][p1][p2] for p2 in range(num_parents)])
-                  for p1 in range(num_parents))
+    stack = deque(
+        (1, [blmuts[0][p1][p2] for p2 in range(num_parents)])
+        for p1 in range(num_parents)
+    )
     mut_rate_sum = 0
     while stack:
         i, par_muts = stack.pop()
@@ -399,7 +420,7 @@ class _Library:
 
     @property
     def _schemarecomb_version(self):
-        return metadata.version('schemarecomb')
+        return metadata.version("schemarecomb")
 
     @property
     def dna_blocks(self):
@@ -417,14 +438,13 @@ class _Library:
 
             # Need to add dummy start and end overhangs if blk_indices[0] or
             # [-1] do not match breakpoints.
-            DUMMY_OVERHANG = Overhang(-1, '')
+            DUMMY_OVERHANG = Overhang(-1, "")
             if blk_indices[0] != self.breakpoints[0].position:
                 overhangs.insert(0, DUMMY_OVERHANG)
             if blk_indices[-1] != self.breakpoints[-1].position:
                 overhangs.append(DUMMY_OVERHANG)
 
-            start_end_overhangs = [ohs for ohs in zip(overhangs,
-                                                      overhangs[1:])]
+            start_end_overhangs = [ohs for ohs in zip(overhangs, overhangs[1:])]
 
             resenz = self.gg_enzyme
             oh_len = resenz.overhang_len
@@ -432,20 +452,21 @@ class _Library:
             dna_blocks = []
             for parent_sr, parent_aa in zip(parents.records, aln_parents):
                 par_blocks = []
-                for blk_num, (ohs, positions) \
-                        in enumerate(zip(start_end_overhangs, blk_indices)):
+                for blk_num, (ohs, positions) in enumerate(
+                    zip(start_end_overhangs, blk_indices)
+                ):
                     oh_start, oh_end = ohs
                     start, end = positions
 
-                    aa_block = [aa for aa in parent_aa[start:end] if aa != '-']
+                    aa_block = [aa for aa in parent_aa[start:end] if aa != "-"]
 
                     # Start and end are affected by the GG sites.
                     aa_start, *aa_block_internal, aa_end = aa_block
 
-                    cdn_options = [self.amino_to_cdn[aa] for aa
-                                   in aa_block_internal]
-                    dna_block_internal = ''.join(choice(tuple(cdn_set))
-                                                 for cdn_set in cdn_options)
+                    cdn_options = [self.amino_to_cdn[aa] for aa in aa_block_internal]
+                    dna_block_internal = "".join(
+                        choice(tuple(cdn_set)) for cdn_set in cdn_options
+                    )
 
                     # Handle start.
                     if oh_start == DUMMY_OVERHANG:
@@ -456,15 +477,15 @@ class _Library:
 
                         if end_dot:
                             # Find the valid codon pattern, e.g. ATG, CG*
-                            pattern = (oh_start.seq + '.'*end_dot)[-3:]
-                            matching_codon = ''
+                            pattern = (oh_start.seq + "." * end_dot)[-3:]
+                            matching_codon = ""
                             for cand_codon in self.amino_to_cdn[aa_start]:
                                 if fullmatch(pattern, cand_codon) is not None:
                                     matching_codon = cand_codon
                                     break
-                            if matching_codon == '':
+                            if matching_codon == "":
                                 # This should never happen.
-                                raise ValueError('No matching codon found.')
+                                raise ValueError("No matching codon found.")
 
                             # Eliminate parts of codon overlapping with
                             # overhang.
@@ -484,20 +505,20 @@ class _Library:
                         begin_dot = oh_end.ind
 
                         if begin_dot:
-                            pattern = ('.'*begin_dot + oh_end.seq)[:3]
-                            matching_codon = ''
+                            pattern = ("." * begin_dot + oh_end.seq)[:3]
+                            matching_codon = ""
                             for cand_codon in self.amino_to_cdn[aa_end]:
                                 if fullmatch(pattern, cand_codon) is not None:
                                     matching_codon = cand_codon
                                     break
-                            if matching_codon == '':
+                            if matching_codon == "":
                                 # This should never happen.
-                                raise ValueError('No matching codon found for'
-                                                 ' end_dna.')
+                                raise ValueError(
+                                    "No matching codon found for" " end_dna."
+                                )
 
                             oh_seq = oh_end.seq.lower()
-                            amino_overhang = (matching_codon[:begin_dot]
-                                              + oh_seq)
+                            amino_overhang = matching_codon[:begin_dot] + oh_seq
                         else:
                             amino_overhang = oh_start.seq.lower()
 
@@ -508,12 +529,12 @@ class _Library:
 
                     # TODO: Maybe want to change description to include block
                     # info?
-                    block_name = parent_sr.id + f'_block-{blk_num}'
+                    block_name = parent_sr.id + f"_block-{blk_num}"
                     block_sr = SeqRecord(
                         block_seq,
                         id=block_name,
                         name=block_name,
-                        description=parent_sr.description
+                        description=parent_sr.description,
                     )
 
                     par_blocks.append(block_sr)
@@ -542,11 +563,8 @@ class _Library:
 
     @classmethod
     def calc_from_config(
-        cls,
-        breakpoints: list[BreakPoint],
-        energy: Decimal,
-        config: LibraryConfig
-    ) -> '_Library':
+        cls, breakpoints: list[BreakPoint], energy: Decimal, config: LibraryConfig
+    ) -> "_Library":
         """Calculate average mutation rate and gg_prob during construction.
 
         Useful for when constructing many libraries from the same
@@ -565,10 +583,7 @@ class _Library:
         if isinstance(gg_thresh, float):
             gg_thresh = Decimal(gg_thresh)
 
-        gg_prob, gg_overhangs = config.gg_enzyme.max_gg_prob(
-            breakpoints,
-            gg_thresh
-        )
+        gg_prob, gg_overhangs = config.gg_enzyme.max_gg_prob(breakpoints, gg_thresh)
 
         return cls(
             breakpoints,
@@ -578,14 +593,14 @@ class _Library:
             gg_prob,
             gg_overhangs,
             config.gg_enzyme,
-            config.amino_to_cdn
+            config.amino_to_cdn,
         )
 
     def __setattr__(self, name, value) -> None:
         super().__setattr__(name, value)
 
         # If gg_overhangs changes, cached _dna_blocks are no longer valid.
-        if name == 'gg_overhangs' and hasattr(self, '_dna_blocks'):
+        if name == "gg_overhangs" and hasattr(self, "_dna_blocks"):
             del self._dna_blocks
 
     def to_json(self) -> str:
@@ -595,11 +610,12 @@ class _Library:
             Instance converted to a JSON string.
 
         """
-        bp_list = [[bp.position, [[oh.ind, oh.seq] for oh in bp.overhangs]]
-                   for bp in self.breakpoints]
+        bp_list = [
+            [bp.position, [[oh.ind, oh.seq] for oh in bp.overhangs]]
+            for bp in self.breakpoints
+        ]
 
-        amino_to_cdn = {aa: tuple(cdns) for aa, cdns
-                        in self.amino_to_cdn.items()}
+        amino_to_cdn = {aa: tuple(cdns) for aa, cdns in self.amino_to_cdn.items()}
 
         out_list = [
             bp_list,
@@ -611,12 +627,12 @@ class _Library:
             self.gg_overhangs,
             self.gg_enzyme.to_json(),
             amino_to_cdn,
-            f'schemarecomb version: {self._schemarecomb_version}'
+            f"schemarecomb version: {self._schemarecomb_version}",
         ]
         return json.dumps(out_list)
 
     @classmethod
-    def from_json(cls, in_json: str) -> '_Library':
+    def from_json(cls, in_json: str) -> "_Library":
         """Construct instance from JSON.
 
         Parameters:
@@ -633,8 +649,10 @@ class _Library:
         gg_overhangs, gg_enzyme_str, *other_attrs = other_attrs
         amino_to_cdn_tups, _ = other_attrs
 
-        breakpoints = [BreakPoint(pos, [Overhang(*oh) for oh in ohs])
-                       for pos, ohs in breakpoints_json]
+        breakpoints = [
+            BreakPoint(pos, [Overhang(*oh) for oh in ohs])
+            for pos, ohs in breakpoints_json
+        ]
 
         energy = Decimal(energy)
 
@@ -650,16 +668,23 @@ class _Library:
 
         gg_enzyme = RestrictionEnzyme.from_json(gg_enzyme_str)
 
-        amino_to_cdn = {aa: set(cdns) for aa, cdns
-                        in amino_to_cdn_tups.items()}
+        amino_to_cdn = {aa: set(cdns) for aa, cdns in amino_to_cdn_tups.items()}
 
-        return cls(breakpoints, energy, e_function, mr, gg_prob, gg_overhangs,
-                   gg_enzyme, amino_to_cdn)
+        return cls(
+            breakpoints,
+            energy,
+            e_function,
+            mr,
+            gg_prob,
+            gg_overhangs,
+            gg_enzyme,
+            amino_to_cdn,
+        )
 
     # TODO: Might be needed in raspp?
-    '''
+    """
     def expand(self, e_diff: float, new_bp: dict[int, list[tuple[int, str]]]):
         new_e = self.energy + e_diff
         new_bps = self.breakpoints | new_bp
         return type(self)(new_e, new_bps, self.parent_alignment)
-    '''
+    """

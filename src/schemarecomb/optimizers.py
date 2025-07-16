@@ -26,6 +26,7 @@ from schemarecomb.restriction_enzymes import RestrictionEnzyme
 @dataclass
 class _TempLibrary:
     """Simpler representation of Library for RASPP purposes."""
+
     energy: Decimal
     breakpoints: list[BreakPoint] = field(default_factory=list)
 
@@ -36,7 +37,7 @@ class _TempLibrary:
 
     def to_library(self, lib_config):
         # Need to remove first library if it doesn't have overhangs.
-        bps = sorted(self.breakpoints, key=attrgetter('position'))
+        bps = sorted(self.breakpoints, key=attrgetter("position"))
         if bps[0].position == 0 and bps[0].overhangs == []:
             bps = bps[1:]
         return Library.calc_from_config(bps, self.energy, lib_config)
@@ -50,9 +51,10 @@ class _Edge(NamedTuple):
         in_node: Input node.
         out_node: Output_node.
     """
+
     e_diff: Decimal
-    in_node: '_Node'
-    out_node: '_Node'
+    in_node: "_Node"
+    out_node: "_Node"
 
 
 @dataclass(repr=False)
@@ -72,6 +74,7 @@ class _Node:
         fill_out: Fill out edges from this node to next column.
 
     """
+
     col: int
     bp: BreakPoint
     in_edges: list[_Edge] = field(default_factory=list)
@@ -81,11 +84,7 @@ class _Node:
     def position(self):
         return self.bp.position
 
-    def fill_out(
-        self,
-        next_col: list['_Node'],
-        energy_func: EnergyFunction
-    ) -> None:
+    def fill_out(self, next_col: list["_Node"], energy_func: EnergyFunction) -> None:
         """Fill out edges from this node to next column.
 
         Args:
@@ -101,8 +100,7 @@ class _Node:
             target_node.in_edges.append(edge)
 
         # Next_col must have sorted indices.
-        assert all(n1.position < n2.position for n1, n2
-                   in zip(next_col, next_col[1:]))
+        assert all(n1.position < n2.position for n1, n2 in zip(next_col, next_col[1:]))
 
         # Iterate on column, calculating energy and adding edges as needed.
         col_iter = iter(next_col)
@@ -146,8 +144,10 @@ class _Node:
     def __repr__(self):
         in_edges = [e.in_node.position for e in self.in_edges]
         out_edges = [e.out_node.position for e in self.out_edges]
-        ret = f'Node({self.col}, {self.position}, {self.bp}, ' \
-            f'in={in_edges}, out={out_edges})'
+        ret = (
+            f"Node({self.col}, {self.position}, {self.bp}, "
+            f"in={in_edges}, out={out_edges})"
+        )
         return ret
 
 
@@ -198,6 +198,7 @@ class RASPP:
             al. 2004. Traversal over this graph results in Libraries.
 
     """
+
     def __init__(
         self,
         parents: ParentSequences,
@@ -205,7 +206,7 @@ class RASPP:
         start_overhangs: Optional[list[Overhang]] = None,
         end_overhangs: Optional[list[Overhang]] = None,
         energy_func_type: Type[EnergyFunction] = SCHEMA,
-        gg_enzyme: Union[str, RestrictionEnzyme] = 'BsaI-HFv2',
+        gg_enzyme: Union[str, RestrictionEnzyme] = "BsaI-HFv2",
         gg_threshold: Union[float, Decimal] = 0.95,
         amino_to_cdn: Optional[dict[str, set[str]]] = None,
     ):
@@ -213,22 +214,20 @@ class RASPP:
             gg_enzyme = RestrictionEnzyme.from_name(gg_enzyme)
 
         energy_func = energy_func_type(parents)
-        self._lib_config = LibraryConfig(energy_func, gg_enzyme, gg_threshold,
-                                         None, amino_to_cdn)
+        self._lib_config = LibraryConfig(
+            energy_func, gg_enzyme, gg_threshold, None, amino_to_cdn
+        )
 
         # Calculate all crossover sites valid for Golden Gate Assembly.
         self.valid_bps = calculate_breakpoints(
-            parents,
-            self._lib_config.amino_to_cdn,
-            start_overhangs,
-            end_overhangs
+            parents, self._lib_config.amino_to_cdn, start_overhangs, end_overhangs
         )
 
         mr_cache = MutationRateCache.from_parents(parents, self.valid_bps)
         self._lib_config.mr_cache = mr_cache
 
         # Get the first column of RASPP graph.
-        first_bp = sorted(self.valid_bps, key=attrgetter('position'))[0]
+        first_bp = sorted(self.valid_bps, key=attrgetter("position"))[0]
         if first_bp.position != 0:
             first_bp = BreakPoint(0, [])
         first_column = [_Node(0, first_bp)]
@@ -277,15 +276,15 @@ class RASPP:
             del valid_bps[-1]
         except KeyError:
             pass
-        bps_e = {bps: self.eval_bps(bps) for bps
-                 in combinations(valid_bps, len(self.columns)-1)}
+        bps_e = {
+            bps: self.eval_bps(bps)
+            for bps in combinations(valid_bps, len(self.columns) - 1)
+        }
         return bps_e
 
     def min_bps(
-        self,
-        min_blk_len: Optional[int] = None,
-        max_blk_len: Optional[int] = None
-    ) -> 'Library':
+        self, min_blk_len: Optional[int] = None, max_blk_len: Optional[int] = None
+    ) -> "Library":
         """Find Library with minimum energy given block length constraints.
 
         Parameters:
@@ -339,14 +338,18 @@ class RASPP:
                     # library from curr_node. If no best library or curr_node
                     # library is best, set as the best library.
                     best_lib = next_col_min_libs.get(new_node)
-                    if best_lib is None or curr_min_lib.energy + edge.e_diff \
-                       < best_lib.energy:
-                        new_lib = curr_min_lib.expand(edge.e_diff,
-                                                      new_node.bp)
+                    if (
+                        best_lib is None
+                        or curr_min_lib.energy + edge.e_diff < best_lib.energy
+                    ):
+                        new_lib = curr_min_lib.expand(edge.e_diff, new_node.bp)
                         next_col_min_libs[new_node] = new_lib
 
-        candidate_libs = [lib for node, lib in curr_col_min_libs.items()
-                          if min_blk_len <= N - node.position <= max_blk_len]
+        candidate_libs = [
+            lib
+            for node, lib in curr_col_min_libs.items()
+            if min_blk_len <= N - node.position <= max_blk_len
+        ]
         if not candidate_libs:
             raise LibrariesNotFound
         return_temp_lib = min(candidate_libs, key=lambda lib: lib.energy)
@@ -381,7 +384,6 @@ class RASPP:
         for min_block_len in range(L_min, L_max):
             curr_best = None
             for max_block_len in range(L_max, min_block_len, -1):
-                # print(min_block_len, max_block_len, '\r', end='')
                 if curr_best is not None:
                     if curr_best.max_block_len <= max_block_len:
                         continue
@@ -399,10 +401,8 @@ class RASPP:
         return chosen_libs
 
     def _all_libraries(
-        self,
-        min_block_len: Optional[int] = None,
-        max_block_len: Optional[int] = None
-    ) -> list['Library']:
+        self, min_block_len: Optional[int] = None, max_block_len: Optional[int] = None
+    ) -> list["Library"]:
         """Get all possible libraries with depth-first graph traversal.
 
         Experimental method. TODO: Update or remove.
@@ -425,8 +425,7 @@ class RASPP:
             if curr_node.col == n:
                 next_block_len = N - curr_node.position
                 if min_block_len <= next_block_len <= max_block_len:
-                    last_bp = sorted(self.valid_bps,
-                                     key=attrgetter('position'))[-1]
+                    last_bp = sorted(self.valid_bps, key=attrgetter("position"))[-1]
                     curr_temp_lib = curr_lib.expand(Decimal(0.0), last_bp)
                     e = curr_temp_lib.e
                     bps = curr_temp_lib.breakpoints
@@ -440,8 +439,10 @@ class RASPP:
                     new_lib = curr_lib.expand(edge.e_diff, new_node.bp)
                     stack.append((new_node, new_lib))
         if not libs:
-            msg = f'No libraries found with min_block_len={min_block_len}' \
-                  f' and max_block_len={max_block_len}.'
+            msg = (
+                f"No libraries found with min_block_len={min_block_len}"
+                f" and max_block_len={max_block_len}."
+            )
             raise LibrariesNotFound(msg)
         return libs
 
@@ -453,7 +454,7 @@ def _generate_libraries(
     end_overhangs: Optional[list[Overhang]] = None,
     min_block_len: Optional[int] = None,
     max_block_len: Optional[int] = None,
-    algorithm: str = 'SCHEMA-RASPP',
+    algorithm: str = "SCHEMA-RASPP",
 ) -> list[Library]:
     """
 
@@ -499,24 +500,20 @@ def _generate_libraries(
 
     """
 
-    if algorithm != 'SCHEMA-RASPP':
-        raise NotImplementedError('SCHEMA-RASPP is the only option available '
-                                  'for the algorithm parameter at this time. ')
+    if algorithm != "SCHEMA-RASPP":
+        raise NotImplementedError(
+            "SCHEMA-RASPP is the only option available "
+            "for the algorithm parameter at this time. "
+        )
     if num_blocks <= 1:
-        raise ValueError('num_blocks must be greater than 1.')
+        raise ValueError("num_blocks must be greater than 1.")
 
     # dict[str, tuple[type[EnergyFunction], type[Optimizer]]]
-    algo_options = {'SCHEMA-RASPP': (SCHEMA, RASPP)}
+    algo_options = {"SCHEMA-RASPP": (SCHEMA, RASPP)}
 
     e_func_type, opt_type = algo_options[algorithm]
 
-    opt = opt_type(
-        parents,
-        num_blocks-1,
-        start_overhangs,
-        end_overhangs,
-        e_func_type
-    )
+    opt = opt_type(parents, num_blocks - 1, start_overhangs, end_overhangs, e_func_type)
 
     if min_block_len is None:
         min_block_len = len(parents.alignment) // (num_blocks + 1)
